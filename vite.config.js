@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [svelte()],
   base: '/', // リポジトリ名に置き換えてください
   build: {
-    outDir: './dist/', // ルートディレクトリに出力
+    outDir: './docs/', // ルートディレクトリに出力
     rollupOptions: {
       input: {
         main: 'index.html' // ルートのindex.htmlを入力ファイルに指定
