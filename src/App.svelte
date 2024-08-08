@@ -1,6 +1,10 @@
 <script>
+  // Firebase 初期化
+  import { auth, provider, signInWithPopup, signOut } from './firebase';
+
   import { onMount } from 'svelte';
   let debugLogs = [];
+  let init_log = null;
 
   let text1 = `I stepped on the cat,
 It didn't like that,
@@ -16,6 +20,9 @@ And now it's gone away.
   let id; // 新規作成時はID不要
   let user = null;  // ログインユーザー
   let loginResult = ""; // ログイン結果表示用
+
+  let result = [];
+  let result2 = [];
 
   function log(message) {
     debugLogs.push(message);
@@ -49,7 +56,7 @@ And now it's gone away.
     const parts1 = line1.split(/(\s+)/);
     const parts2 = line2.split(/(\s+)/);
     const maxParts = Math.max(parts1.length, parts2.length);
-    const result = [];
+    result = [];
 
     for (let i = 0; i < maxParts; i++) {
       const part1 = parts1[i] || '';
@@ -79,28 +86,37 @@ And now it's gone away.
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.json();
+      result = await response.json();
       log(`Created: ${JSON.stringify(result)}`);
-      id = result.id;  // 新規作成されたIDを保持
+      // id = result.id;  // 新規作成されたIDを保持
     } catch (error) {
       log(`Create error: ${error}`);
     }
   }
 
   async function readTexts() {
-    try {
-      const response = await fetch(`https://cotton-concrete-catsup.glitch.me/api/checker?uid=${uid}`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      log(`Fetched: ${JSON.stringify(result)}`);
-    } catch (error) {
-      log(`Read error: ${error}`);
+      try {
+        // const response = await fetch(`https://cotton-concrete-catsup.glitch.me/api/checker`, {
+          // https://cotton-concrete-catsup.glitch.me/api_get/checker
+        const response = await fetch(`https://cotton-concrete-catsup.glitch.me/api_get/checker`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // result = await response.json();
+        result2 = await response.json();
+        // result2 = await response;
+        // log(`Fetched: ${JSON.stringify(result)}`);
+        } catch (error) {
+          log(`Read error: ${error}`);
+        }
     }
-  }
 
   async function updateText() {
     if (!id) {
@@ -121,7 +137,7 @@ And now it's gone away.
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.json();
+      result = await response.json();
       log(`Updated: ${JSON.stringify(result)}`);
     } catch (error) {
       log(`Update error: ${error}`);
@@ -147,7 +163,7 @@ And now it's gone away.
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.json();
+      result = await response.json();
       log(`Deleted: ${JSON.stringify(result)}`);
       id = null;  // 削除後にIDをクリア
     } catch (error) {
@@ -156,72 +172,107 @@ And now it's gone away.
   }
 
   async function initDatabase() {
-    try {
-      const response = await fetch('https://cotton-concrete-catsup.glitch.me/api/init-database', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ password: 'init' })
-      });
+    // Endpoint to initialize the database table
+// app.post('/api/init-database', (req, res) => {
+//   console.log("checker_init2")
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+//   const { password } = req.body;
+
+//     if (password === 'init') {
+//         try {
+//             initializeDatabase_checker();
+//             res.status(200).json({ message: 'Database initialized successfully.' });
+//         } catch (error) {
+//             res.status(500).json({ error: 'Failed to initialize database.' });
+//         }
+//     } else {
+//         res.status(403).json({ error: 'Unauthorized: Invalid password.' });
+//     }
+// });
+      try{
+        const response = await fetch('https://cotton-concrete-catsup.glitch.me/api/init-database', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ password: 'init' })
+        });
+        // debuglog
+        init_log = await response.json();
+        
+      } catch (error) {
+        log(`Init error: ${error}`);
       }
+  };
 
-      const result = await response.json();
-      log(`Database initialized: ${JSON.stringify(result)}`);
-    } catch (error) {
-      log(`Init database error: ${error}`);
-    }
-  }
 
-  // Firebase 初期化
   onMount(() => {
-    const firebaseConfig = {
-      apiKey: "AIzaSyBcOlIDP2KWbJuKM0WeMHNp-WvjTVfLt9Y",
-      authDomain: "p2auth-ea50a.firebaseapp.com",
-      projectId: "p2auth-ea50a",
-      storageBucket: "p2auth-ea50a.appspot.com",
-      messagingSenderId: "796225429484",
-      appId: "1:796225429484:web:ece56ef2fc0be28cd6eac9"
-    };
-    firebase.initializeApp(firebaseConfig);
+    auth.onAuthStateChanged((currentUser) => {
+      user = currentUser;
+    });
+    // read
+    readTexts();
 
-    const googleProvider = new firebase.auth.GoogleAuthProvider();
   });
 
-  async function googleLogin() {
+  async function handleLogin() {
     try {
-      const result = await firebase.auth().signInWithPopup(googleProvider);
-      user = result.user;
-      loginResult = `Logged in as: ${user.displayName}`;
-      log(`Logged in as: ${user.displayName}`);
+      const login = await signInWithPopup(auth, provider);
+      user = login.user;
+      // uid
+      uid = user.uid;
     } catch (error) {
-      log(`Login error: ${error.message}`);
+      console.error("Error during sign-in:", error);
     }
   }
 
-  async function signOut() {
+  async function handleLogout() {
     try {
-      await firebase.auth().signOut();
+      await signOut(auth);
       user = null;
-      loginResult = "";
-      log('Signed out');
+      uid = "";
     } catch (error) {
-      log(`Sign out error: ${error.message}`);
+      console.error("Error during sign-out:", error);
     }
   }
 </script>
 
 <main>
+  <!-- uid -->
+   <h1>
+    <!-- 全ての変数を一覧表示 -->
+    init_log: {init_log}
+    <!-- if init_log -->
+    {#if init_log}
+      <div>{init_log.message}</div>
+      <div>{init_log.error}</div>
+    {/if}
+
+
+diff: {diff}
+uid: {uid}
+id: {id}
+user: {user}
+loginResult: {loginResult}
+   </h1>
+   <h2>
+    <!-- result: {result} -->
+    result2: {JSON.stringify(result2)}
+<!-- result2をeach -->
+    {#each result2 as item, index}
+    <div>{index + 1}: {JSON.stringify(item)}</div>
+  {/each}
+
+   </h2>
+   
   <div class="debug">
-    <h3>Debug Logs</h3>
-    <ul>
-      {#each debugLogs as log}
-        <li>{log}</li>
-      {/each}
-    </ul>
+    <!-- <h3>Debug Logs</h3> -->
+    <!-- each -->
+    {#each debugLogs as log}
+      <div>{log}</div>
+    {/each}
+
+
   </div>
 
   <div class="container">
@@ -238,10 +289,10 @@ And now it's gone away.
 
   <div id="loginContainer">
     {#if user === null}
-      <button on:click={googleLogin}>Login with Google</button>
+      <button on:click={handleLogin}>Login with Google</button>
     {/if}
     {#if user !== null}
-      <div>{loginResult} <button on:click={signOut}>Sign Out</button></div>
+      <div>{loginResult} <button on:click={handleLogout}>Sign Out</button></div>
     {/if}
   </div>
 
