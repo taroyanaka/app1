@@ -4,7 +4,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 // GitHub Pagesのリポジトリのサブディレクトリでホストする場合のベースパス設定
 export default defineConfig({
   plugins: [svelte()],
-  base: '/app1/', // リポジトリ名に置き換えてください
+  base: './', // リポジトリ名に置き換えてください
   build: {
     outDir: './docs/', // ルートディレクトリに出力
     rollupOptions: {
