@@ -16,7 +16,7 @@ And now it's gone away.
 猫ネコ犬🐕ねこ🐕`;
 
   let diff = [];
-  let uid = "default_user";  // ユーザーID（適宜設定してください）
+  let uid = null;  // ユーザーID（適宜設定してください）
   let id; // 新規作成時はID不要
   let user = null;  // ログインユーザー
   let loginResult = ""; // ログイン結果表示用
@@ -87,6 +87,9 @@ And now it's gone away.
       }
 
       result = await response.json();
+      // createに成功したらreadする
+      readTexts();
+
       log(`Created: ${JSON.stringify(result)}`);
       // id = result.id;  // 新規作成されたIDを保持
     } catch (error) {
@@ -138,6 +141,8 @@ And now it's gone away.
       }
 
       result = await response.json();
+      // updateに成功したらreadする
+      readTexts();
       log(`Updated: ${JSON.stringify(result)}`);
     } catch (error) {
       log(`Update error: ${error}`);
@@ -164,6 +169,9 @@ And now it's gone away.
       }
 
       result = await response.json();
+      // deleteに成功したらreadする
+      readTexts();
+
       log(`Deleted: ${JSON.stringify(result)}`);
       id = null;  // 削除後にIDをクリア
     } catch (error) {
@@ -209,6 +217,10 @@ And now it's gone away.
   onMount(() => {
     auth.onAuthStateChanged((currentUser) => {
       user = currentUser;
+      // uidをセット
+      if (user) {
+        uid = user.uid;
+      }
     });
     // read
     readTexts();
@@ -257,10 +269,18 @@ loginResult: {loginResult}
    </h1>
    <h2>
     <!-- result: {result} -->
-    result2: {JSON.stringify(result2)}
+    <!-- result2: {JSON.stringify(result2)} -->
 <!-- result2をeach -->
     {#each result2 as item, index}
-    <div>{index + 1}: {JSON.stringify(item)}</div>
+    <div>
+      <!-- {index + 1}: {JSON.stringify(item)} -->
+       <!-- item表示 id, text1, text2, created, updated -->
+      {index + 1}: {item.id}, {item.text1}, {item.text2}, {item.created}, {item.updated}
+      <!-- idを指定してdelete -->
+      <button on:click={() => {id = item.id; deleteText();}}>Delete</button>
+      <!-- textareaにセット(idを更新) -->
+      <button on:click={() => {id = item.id; text1 = item.text1; text2 = item.text2;}}>Set</button>
+    </div>
   {/each}
 
    </h2>
@@ -283,12 +303,18 @@ loginResult: {loginResult}
   <button on:click={compareTexts}>Compare</button>
   <button on:click={createText}>Create</button>
   <button on:click={readTexts}>Read</button>
-  <button on:click={updateText}>Update</button>
-  <button on:click={deleteText}>Delete</button>
+  <!-- idとuidがセットされてる時だけupdateを表示 -->
+  {#if id && uid}
+    <button on:click={updateText}>Update</button>
+    <!-- delete -->
+    <button on:click={deleteText}>Delete</button>
+  {/if}
+
+
   <button on:click={initDatabase}>Init Database</button>
 
   <div id="loginContainer">
-    {#if user === null}
+    {#if user === null && uid === null}
       <button on:click={handleLogin}>Login with Google</button>
     {/if}
     {#if user !== null}
